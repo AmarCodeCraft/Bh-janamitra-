@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import useFoodImages from "../hooks/useFoodImages";
-import { storage, ID } from "../appwrite";
+import { storage, databases, ID, checkAuthStatus } from "../appwrite";
 
 const Upload = () => {
   const [formData, setFormData] = useState({
@@ -19,16 +19,28 @@ const Upload = () => {
   const { user, isAuthenticated } = useAuth();
   const { uploadImage } = useFoodImages();
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Check authentication status
+  // Check authentication on component mount
   useEffect(() => {
-    if (!isAuthenticated || !user) {
-      console.log("User not authenticated, redirecting to login");
-      navigate("/login");
-      return;
-    }
-    console.log("Current user:", user); // Debug log
-  }, [isAuthenticated, user, navigate]);
+    const verifyAuth = async () => {
+      try {
+        const authUser = await checkAuthStatus();
+        if (!authUser) {
+          console.log("No authenticated user found");
+          navigate("/login");
+          return;
+        }
+        console.log("Authenticated user:", authUser);
+        setCurrentUser(authUser);
+      } catch (error) {
+        console.error("Auth verification failed:", error);
+        navigate("/login");
+      }
+    };
+
+    verifyAuth();
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,8 +95,9 @@ const Upload = () => {
     e.preventDefault();
     setError("");
 
-    // Verify user is logged in
-    if (!user || !user.$id) {
+    // Double check authentication
+    const authUser = await checkAuthStatus();
+    if (!authUser) {
       setError("Please log in to upload images");
       navigate("/login");
       return;
@@ -98,7 +111,7 @@ const Upload = () => {
     setIsLoading(true);
 
     try {
-      console.log("Starting upload process..."); // Debug log
+      console.log("Starting upload with user:", authUser);
 
       // 1. Upload image to storage
       const fileUpload = await storage.createFile(
@@ -106,8 +119,6 @@ const Upload = () => {
         ID.unique(),
         selectedFile
       );
-
-      console.log("File uploaded:", fileUpload); // Debug log
 
       if (!fileUpload || !fileUpload.$id) {
         throw new Error("Failed to upload file to storage");
@@ -119,7 +130,7 @@ const Upload = () => {
         import.meta.env.VITE_APPWRITE_COLLECTION_ID,
         ID.unique(),
         {
-          userId: user.$id,
+          userId: authUser.$id,
           imageId: fileUpload.$id,
           caption: formData.caption,
           tags: formData.tags
@@ -130,12 +141,16 @@ const Upload = () => {
         }
       );
 
-      console.log("Database entry created:", databaseEntry); // Debug log
-
+      console.log("Upload successful:", databaseEntry);
       navigate("/profile");
     } catch (err) {
       console.error("Upload error:", err);
       setError(err.message || "Failed to upload image. Please try again.");
+
+      // Handle specific error cases
+      if (err.code === 401) {
+        navigate("/login");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -167,8 +182,12 @@ const Upload = () => {
     },
   };
 
-  if (!isAuthenticated || !user) {
-    return null; // or a loading spinner
+  if (!currentUser) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      </div>
+    );
   }
 
   return (
