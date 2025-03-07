@@ -14,14 +14,15 @@ export function AuthProvider({ children }) {
 
   // Check if there is a current user session on initial load
   useEffect(() => {
-    const checkUser = async () => {
+    const checkAuth = async () => {
       try {
         setLoading(true);
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
+        const session = await account.get();
+        setUser(session);
         setIsAuthenticated(true);
-      } catch (err) {
-        setError(err);
+        console.log("Auth check successful:", session); // Debug log
+      } catch (error) {
+        console.log("Not authenticated:", error);
         setUser(null);
         setIsAuthenticated(false);
       } finally {
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
       }
     };
 
-    checkUser();
+    checkAuth();
   }, []);
 
   // Sign up function
@@ -116,7 +117,11 @@ export function AuthProvider({ children }) {
 // Hook for components to get the auth object and re-render when it changes
 
 export const useAuth = () => {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
 
 export default useAuth;

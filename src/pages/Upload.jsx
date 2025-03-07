@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 // eslint-disable-next-line
 import { motion } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
 import useFoodImages from "../hooks/useFoodImages";
+import { storage, ID } from "../appwrite";
 
 const Upload = () => {
   const [formData, setFormData] = useState({
@@ -15,9 +16,19 @@ const Upload = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { uploadImage } = useFoodImages();
   const navigate = useNavigate();
+
+  // Check authentication status
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      console.log("User not authenticated, redirecting to login");
+      navigate("/login");
+      return;
+    }
+    console.log("Current user:", user); // Debug log
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,6 +83,13 @@ const Upload = () => {
     e.preventDefault();
     setError("");
 
+    // Verify user is logged in
+    if (!user || !user.$id) {
+      setError("Please log in to upload images");
+      navigate("/login");
+      return;
+    }
+
     if (!selectedFile) {
       setError("Please select an image to upload");
       return;
@@ -80,34 +98,43 @@ const Upload = () => {
     setIsLoading(true);
 
     try {
-      // Convert comma-separated tags to array and clean them
-      const tagsArray = formData.tags
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag !== "");
+      console.log("Starting upload process..."); // Debug log
 
-      console.log("Starting upload with:", {
-        file: selectedFile,
-        userId: user.$id,
-        caption: formData.caption,
-        tags: tagsArray,
-      });
-
-      const response = await uploadImage(
-        selectedFile,
-        user.$id,
-        formData.caption,
-        tagsArray
+      // 1. Upload image to storage
+      const fileUpload = await storage.createFile(
+        import.meta.env.VITE_APPWRITE_BUCKET_ID,
+        ID.unique(),
+        selectedFile
       );
 
-      if (!response || !response.$id) {
-        throw new Error("Upload failed - no response from server");
+      console.log("File uploaded:", fileUpload); // Debug log
+
+      if (!fileUpload || !fileUpload.$id) {
+        throw new Error("Failed to upload file to storage");
       }
 
-      console.log("Upload successful:", response);
+      // 2. Create database entry
+      const databaseEntry = await databases.createDocument(
+        import.meta.env.VITE_APPWRITE_DATABASE_ID,
+        import.meta.env.VITE_APPWRITE_COLLECTION_ID,
+        ID.unique(),
+        {
+          userId: user.$id,
+          imageId: fileUpload.$id,
+          caption: formData.caption,
+          tags: formData.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+          likes: 0,
+        }
+      );
+
+      console.log("Database entry created:", databaseEntry); // Debug log
+
       navigate("/profile");
     } catch (err) {
-      console.error("Upload error details:", err);
+      console.error("Upload error:", err);
       setError(err.message || "Failed to upload image. Please try again.");
     } finally {
       setIsLoading(false);
@@ -139,6 +166,10 @@ const Upload = () => {
       },
     },
   };
+
+  if (!isAuthenticated || !user) {
+    return null; // or a loading spinner
+  }
 
   return (
     <motion.div
