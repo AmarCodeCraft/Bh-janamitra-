@@ -49,11 +49,22 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      await signUp(formData.email, formData.password, formData.name);
+      console.log('Starting signup process...'); // Debug log
+      const response = await signUp(formData.email, formData.password, formData.name);
+      console.log('Signup response:', response); // Debug log
       navigate('/');
     } catch (err) {
-      console.error('Signup error:', err);
-      setError(err.message || 'Failed to create account. Please try again.');
+      console.error('Detailed signup error:', err); // Detailed error logging
+      setError(err.message || 'Failed to create account. Please check your connection and try again.');
+      
+      // More specific error messages
+      if (err.code === 429) {
+        setError('Too many attempts. Please try again later.');
+      } else if (err.code === 400) {
+        setError('Invalid email or password format.');
+      } else if (err.code === 409) {
+        setError('An account with this email already exists.');
+      }
     } finally {
       setIsLoading(false);
     }

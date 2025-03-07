@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { getCurrentUser, signIn, signUp, signOut } from "../utils/auth";
+import { account, ID } from "../appwrite";
 
 // Create an authentication context
 const AuthContext = createContext();
@@ -9,6 +10,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check if there is a current user session on initial load
   useEffect(() => {
@@ -17,9 +19,11 @@ export function AuthProvider({ children }) {
         setLoading(true);
         const currentUser = await getCurrentUser();
         setUser(currentUser);
+        setIsAuthenticated(true);
       } catch (err) {
         setError(err);
         setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -30,17 +34,37 @@ export function AuthProvider({ children }) {
 
   // Sign up function
   const handleSignUp = async (email, password, name) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await signUp(email, password, name);
-      setUser(response.user);
-      return response;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
+    let retries = 3;
+
+    while (retries > 0) {
+      try {
+        const response = await account.create(
+          ID.unique(),
+          email,
+          password,
+          name
+        );
+
+        // Create session after successful signup
+        await account.createEmailSession(email, password);
+
+        setUser(response);
+        setIsAuthenticated(true);
+        return response;
+      } catch (error) {
+        console.error(
+          `Signup attempt failed. Retries left: ${retries - 1}`,
+          error
+        );
+        retries--;
+
+        if (retries === 0) {
+          throw error;
+        }
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
   };
 
@@ -51,6 +75,7 @@ export function AuthProvider({ children }) {
       setError(null);
       const response = await signIn(email, password);
       setUser(response.user);
+      setIsAuthenticated(true);
       return response;
     } catch (err) {
       setError(err.message);
@@ -66,6 +91,7 @@ export function AuthProvider({ children }) {
       setLoading(true);
       await signOut();
       setUser(null);
+      setIsAuthenticated(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -81,7 +107,7 @@ export function AuthProvider({ children }) {
     signIn: handleSignIn,
     signUp: handleSignUp,
     signOut: handleSignOut,
-    isAuthenticated: !!user,
+    isAuthenticated,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
