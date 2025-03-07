@@ -2,11 +2,12 @@ import { Client, Account, Databases, Storage } from "appwrite";
 
 const client = new Client();
 
-// Configure the client
+// Configure the client with proper error handling
 try {
   client
     .setEndpoint("https://cloud.appwrite.io/v1")
-    .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+    .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID)
+    .setSelfSigned(true); // Enable this for development
 
   // Add these headers for better error handling and CORS
   client.headers = {
@@ -16,7 +17,10 @@ try {
     "Content-Type": "application/json",
   };
 
-  console.log("Appwrite client configured with project:", import.meta.env.VITE_APPWRITE_PROJECT_ID);
+  console.log(
+    "Appwrite client configured with project:",
+    import.meta.env.VITE_APPWRITE_PROJECT_ID
+  );
 } catch (error) {
   console.error("Error configuring Appwrite client:", error);
 }
@@ -26,23 +30,24 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 export { ID } from "appwrite";
 
-// Helper function to check connection
+// Add health check function
 export const checkAppwriteConnection = async () => {
   try {
-    const response = await fetch('https://cloud.appwrite.io/v1/health/general', {
-      method: 'GET',
+    const healthCheck = await fetch("https://cloud.appwrite.io/v1/health", {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-      }
+        "Content-Type": "application/json",
+        "X-Appwrite-Project": import.meta.env.VITE_APPWRITE_PROJECT_ID,
+      },
     });
-    
-    if (!response.ok) {
-      throw new Error('Health check failed');
+
+    if (!healthCheck.ok) {
+      throw new Error("Health check failed");
     }
-    
+
     return true;
   } catch (error) {
-    console.error('Appwrite connection check failed:', error);
+    console.error("Appwrite connection check failed:", error);
     return false;
   }
 };
