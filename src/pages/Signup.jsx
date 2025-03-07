@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 // eslint-disable-next-line
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { checkAppwriteConnection } from '../appwrite';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,17 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
+
+  // Check Appwrite connection on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      const isConnected = await checkAppwriteConnection();
+      if (!isConnected) {
+        setError('Unable to connect to the server. Please try again later.');
+      }
+    };
+    checkConnection();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -34,6 +46,16 @@ const Signup = () => {
       setError('Password must be at least 8 characters long');
       return false;
     }
+
+    if (!formData.email.includes('@')) {
+      setError('Please enter a valid email address');
+      return false;
+    }
+
+    if (!formData.name.trim()) {
+      setError('Please enter your name');
+      return false;
+    }
     
     return true;
   };
@@ -41,29 +63,53 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    if (!validateForm()) {
-      return;
-    }
-    
     setIsLoading(true);
 
     try {
-      console.log('Starting signup process...'); // Debug log
-      const response = await signUp(formData.email, formData.password, formData.name);
-      console.log('Signup response:', response); // Debug log
-      navigate('/');
-    } catch (err) {
-      console.error('Detailed signup error:', err); // Detailed error logging
-      setError(err.message || 'Failed to create account. Please check your connection and try again.');
+      // Validate form
+      if (!validateForm()) {
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Starting signup process...');
       
-      // More specific error messages
+      // Attempt signup with retry
+      let retryCount = 3;
+      let success = false;
+      
+      while (retryCount > 0 && !success) {
+        try {
+          const response = await signUp(
+            formData.email,
+            formData.password,
+            formData.name
+          );
+          console.log('Signup successful:', response);
+          success = true;
+          navigate('/');
+        } catch (err) {
+          console.error(`Signup attempt failed. Retries left: ${retryCount-1}`, err);
+          retryCount--;
+          if (retryCount === 0) throw err;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait before retry
+        }
+      }
+
+    } catch (err) {
+      console.error('Signup error:', err);
+      
+      // Handle specific error cases
       if (err.code === 429) {
         setError('Too many attempts. Please try again later.');
       } else if (err.code === 400) {
         setError('Invalid email or password format.');
       } else if (err.code === 409) {
         setError('An account with this email already exists.');
+      } else if (err.message?.includes('fetch')) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err.message || 'Failed to create account. Please try again.');
       }
     } finally {
       setIsLoading(false);

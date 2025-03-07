@@ -1,25 +1,37 @@
 import { Client, Account, Databases, Storage } from "appwrite";
 
-const client = new Client()
-  .setEndpoint("https://cloud.appwrite.io/v1") // Make sure this is correct
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+const client = new Client();
 
-// Add these headers for CORS and better error handling
-client.headers["X-Appwrite-Response-Format"] = "1.0.0";
-client.headers["Cache-Control"] = "no-cache";
+// Configure the client
+try {
+  client
+    .setEndpoint("https://cloud.appwrite.io/v1")
+    .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+
+  // Add headers for better error handling
+  client.headers = {
+    ...client.headers,
+    "X-Appwrite-Response-Format": "1.0.0",
+    "Cache-Control": "no-cache",
+  };
+
+  console.log("Appwrite client configured successfully");
+} catch (error) {
+  console.error("Error configuring Appwrite client:", error);
+}
 
 export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
 export { ID } from "appwrite";
 
-// Add helper function to check auth status
-export const checkAuthStatus = async () => {
+// Helper function to check connection
+export const checkAppwriteConnection = async () => {
   try {
-    const user = await account.get();
-    return user;
+    await account.get();
+    return true;
   } catch (error) {
-    console.error("Auth check failed:", error);
-    return null;
+    console.error("Appwrite connection check failed:", error);
+    return false;
   }
 };
