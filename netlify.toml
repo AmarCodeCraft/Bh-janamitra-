@@ -1,4 +1,11 @@
 [[redirects]]
+  from = "/v1/*"
+  to = "https://cloud.appwrite.io/v1/:splat"
+  status = 200
+  force = true
+  headers = {X-From = "Netlify"}
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
@@ -8,4 +15,8 @@
     [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "X-Requested-With, Content-Type, Authorization" 
+    Access-Control-Allow-Headers = "X-Requested-With, Content-Type, Authorization, X-Appwrite-Project, X-Appwrite-Key, X-Appwrite-Response-Format"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains" 

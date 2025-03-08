@@ -3,24 +3,33 @@ import { Client, Account, Databases, Storage } from "appwrite";
 // Initialize the Appwrite client
 const client = new Client();
 
-// Get environment variables
-const ENDPOINT =
-  import.meta.env.VITE_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1";
+// Get environment variables with fallbacks
+const ENDPOINT = "https://cloud.appwrite.io/v1";
 const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID;
+const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
+const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+
+if (!PROJECT_ID) {
+  console.error("Project ID is not defined in environment variables");
+}
 
 // Configure the client
 try {
-  client.setEndpoint(ENDPOINT).setProject(PROJECT_ID);
+  client.setEndpoint(ENDPOINT).setProject(PROJECT_ID).setSelfSigned(true); // Enable this for development
 
-  // Set up headers for CORS and better error handling
+  // Add these headers for better error handling and CORS
   client.headers = {
-    ...client.headers,
-    "X-Appwrite-Response-Format": "1.0.0",
     "X-Appwrite-Project": PROJECT_ID,
+    "X-Appwrite-Response-Format": "1.0.0",
     "Content-Type": "application/json",
   };
 
-  console.log("Appwrite client initialized successfully");
+  console.log("Appwrite client initialized with:", {
+    endpoint: ENDPOINT,
+    projectId: PROJECT_ID,
+    databaseId: DATABASE_ID,
+    collectionId: COLLECTION_ID,
+  });
 } catch (error) {
   console.error("Appwrite client initialization error:", error);
 }
@@ -31,62 +40,82 @@ export const databases = new Databases(client);
 export const storage = new Storage(client);
 export { ID } from "appwrite";
 
-// Improved connection check with detailed error logging
-export const checkAppwriteConnection = async () => {
-  try {
-    // Try to get the current session as a connection test
-    await account.getSession("current");
-    console.log("Appwrite connection successful");
-    return true;
-  } catch (error) {
-    if (error.code === 401) {
-      // 401 means the server is reachable but we're not authenticated
-      console.log("Appwrite connection successful (not authenticated)");
+// Improved connection check with retries
+export const checkAppwriteConnection = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Try to get the current account as a connection test
+      await account.get();
+      console.log("Appwrite connection successful");
       return true;
+    } catch (error) {
+      if (error.code === 401) {
+        // 401 means server is reachable but we're not authenticated
+        console.log("Appwrite connection successful (not authenticated)");
+        return true;
+      }
+      console.error(`Connection attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) {
+        return false;
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.pow(2, i) * 1000)
+      );
     }
-    console.error("Appwrite connection failed:", error);
-    return false;
   }
+  return false;
 };
 
-// Improved auth status check
-export const checkAuthStatus = async () => {
+// Improved auth check with retries
+export const checkAuthStatus = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const session = await account.get();
+      console.log("Auth check successful");
+      return session;
+    } catch (error) {
+      if (error.code === 401) {
+        console.log("User not authenticated");
+        return null;
+      }
+      console.error(`Auth check attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) {
+        return null;
+      }
+      // Wait before retrying
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.pow(2, i) * 1000)
+      );
+    }
+  }
+  return null;
+};
+
+// Helper function to get food images
+export const getFoodImages = async (limit = 10) => {
   try {
-    const session = await account.get();
-    console.log("Auth check successful:", session);
-    return session;
+    console.log("Getting food images with limit:", limit);
+    console.log("Database ID:", DATABASE_ID);
+    console.log("Collection ID:", COLLECTION_ID);
+
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTION_ID,
+      [
+        // Add any queries or filters here
+      ],
+      limit
+    );
+
+    return response.documents;
   } catch (error) {
-    if (error.code === 401) {
-      console.log("User not authenticated");
-      return null;
-    }
-    console.error("Auth check error:", error);
-    return null;
+    console.error("Error getting food images:", error);
+    throw error;
   }
 };
 
-// Custom error handler for Appwrite operations
-export const handleAppwriteError = (error) => {
-  if (error.code) {
-    switch (error.code) {
-      case 401:
-        return "Authentication failed. Please log in again.";
-      case 403:
-        return "Permission denied. Please check your access rights.";
-      case 404:
-        return "Resource not found.";
-      case 429:
-        return "Too many requests. Please try again later.";
-      case 503:
-        return "Service unavailable. Please try again later.";
-      default:
-        return `Error: ${error.message || "Unknown error occurred"}`;
-    }
-  }
-  return "Network error. Please check your connection.";
-};
-
-// Test connection on module load
+// Initialize connection check
 (async () => {
   try {
     const isConnected = await checkAppwriteConnection();
