@@ -1,43 +1,95 @@
 import { Client, Account, Databases, Storage } from "appwrite";
 
-// Initialize the Appwrite client
-const client = new Client();
+class AppwriteService {
+  constructor() {
+    this.client = new Client();
+    this.account = null;
+    this.databases = null;
+    this.storage = null;
+    this.init();
+  }
 
-// Get environment variables with fallbacks
-const ENDPOINT = "https://cloud.appwrite.io/v1";
-const PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID;
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_ID;
+  init() {
+    try {
+      this.client
+        .setEndpoint("https://cloud.appwrite.io/v1")
+        .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
 
-if (!PROJECT_ID) {
-  console.error("Project ID is not defined in environment variables");
+      // Initialize services
+      this.account = new Account(this.client);
+      this.databases = new Databases(this.client);
+      this.storage = new Storage(this.client);
+
+      console.log("Appwrite service initialized");
+    } catch (error) {
+      console.error("Appwrite initialization failed:", error);
+    }
+  }
+
+  async createAccount(email, password, name) {
+    try {
+      const response = await this.account.create(
+        "unique()",
+        email,
+        password,
+        name
+      );
+      return response;
+    } catch (error) {
+      console.error("Account creation failed:", error);
+      throw error;
+    }
+  }
+
+  async createSession(email, password) {
+    try {
+      return await this.account.createEmailSession(email, password);
+    } catch (error) {
+      console.error("Session creation failed:", error);
+      throw error;
+    }
+  }
+
+  async getCurrentUser() {
+    try {
+      return await this.account.get();
+    } catch (error) {
+      console.error("Get current user failed:", error);
+      return null;
+    }
+  }
+
+  async listDocuments(databaseId, collectionId, queries = [], limit = 10) {
+    try {
+      return await this.databases.listDocuments(
+        databaseId,
+        collectionId,
+        queries,
+        limit
+      );
+    } catch (error) {
+      console.error("List documents failed:", error);
+      throw error;
+    }
+  }
+
+  async uploadFile(file, bucketId) {
+    try {
+      return await this.storage.createFile(bucketId, "unique()", file);
+    } catch (error) {
+      console.error("File upload failed:", error);
+      throw error;
+    }
+  }
 }
 
-// Configure the client
-try {
-  client.setEndpoint(ENDPOINT).setProject(PROJECT_ID).setSelfSigned(true); // Enable this for development
+const appwriteService = new AppwriteService();
+export default appwriteService;
 
-  // Add these headers for better error handling and CORS
-  client.headers = {
-    "X-Appwrite-Project": PROJECT_ID,
-    "X-Appwrite-Response-Format": "1.0.0",
-    "Content-Type": "application/json",
-  };
-
-  console.log("Appwrite client initialized with:", {
-    endpoint: ENDPOINT,
-    projectId: PROJECT_ID,
-    databaseId: DATABASE_ID,
-    collectionId: COLLECTION_ID,
-  });
-} catch (error) {
-  console.error("Appwrite client initialization error:", error);
-}
-
-// Initialize services
-export const account = new Account(client);
-export const databases = new Databases(client);
-export const storage = new Storage(client);
+// Export individual services for convenience
+export const account = appwriteService.account;
+export const databases = appwriteService.databases;
+export const storage = appwriteService.storage;
 export { ID } from "appwrite";
 
 // Improved connection check with retries

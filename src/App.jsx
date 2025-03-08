@@ -12,6 +12,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { useEffect } from "react";
 import { validateEnvironment } from "./utils/envValidation";
 import { checkAppwriteConnection } from "./appwrite";
+import { useAppwrite } from "./hooks/useAppwrite";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -33,6 +34,8 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  const { loading, error } = useAppwrite();
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -51,6 +54,20 @@ function App() {
 
     initializeApp();
   }, []);
+
+  useEffect(() => {
+    if (error) {
+      console.error("Appwrite error:", error);
+    }
+  }, [error]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
