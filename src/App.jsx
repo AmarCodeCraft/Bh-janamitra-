@@ -9,6 +9,9 @@ import Upload from "./pages/Upload";
 import Explore from "./pages/Explore";
 import { useAuth } from "./hooks/useAuth";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { useEffect } from "react";
+import { validateEnvironment } from "./utils/envValidation";
+import { checkAppwriteConnection } from "./appwrite";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -30,6 +33,25 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Validate environment variables
+        validateEnvironment();
+
+        // Check Appwrite connection
+        const isConnected = await checkAppwriteConnection();
+        if (!isConnected) {
+          console.error("Failed to connect to Appwrite services");
+        }
+      } catch (error) {
+        console.error("App initialization failed:", error);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>
