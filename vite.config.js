@@ -9,11 +9,21 @@ export default defineConfig({
       "/v1": {
         target: "https://cloud.appwrite.io",
         changeOrigin: true,
-        secure: false,
+        secure: true,
+        ws: true,
       },
     },
   },
   define: {
     "process.env": {},
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          appwrite: ["appwrite"],
+        },
+      },
+    },
   },
 });
