@@ -51,3 +51,14 @@ export const checkAppwriteConnection = async () => {
     return false;
   }
 };
+
+// Add the missing checkAuthStatus function
+export const checkAuthStatus = async () => {
+  try {
+    const user = await account.get();
+    return user;
+  } catch (error) {
+    console.error("Auth check failed:", error);
+    return null;
+  }
+};
