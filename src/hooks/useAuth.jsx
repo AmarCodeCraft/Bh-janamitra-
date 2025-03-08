@@ -8,43 +8,30 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    const checkUser = async () => {
+      try {
+        const session = await account.get();
+        setUser(session);
+        setIsAuthenticated(true);
+      } catch (error) {
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const checkAuth = async () => {
-    try {
-      const session = await account.get();
-      setUser(session);
-      setIsAuthenticated(true);
-      console.log("Auth check successful:", session);
-    } catch (error) {
-      console.log("Not authenticated:", error);
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    checkUser();
+  }, []);
 
   const signUp = async (email, password, name) => {
     try {
-      console.log("Starting signup process...");
-
-      // Create account
-      const response = await account.create(ID.unique(), email, password, name);
-      console.log("Account created:", response);
-
-      // Create session (login)
+      await account.create(ID.unique(), email, password, name);
       await account.createEmailSession(email, password);
-      console.log("Session created");
-
-      // Get account details
       const user = await account.get();
-      console.log("User details fetched:", user);
-
       setUser(user);
       setIsAuthenticated(true);
       return user;
@@ -80,15 +67,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        signUp,
-        login,
-        logout,
-        checkAuth,
-      }}
+      value={{ user, isAuthenticated, loading, signUp, login, logout }}
     >
       {children}
     </AuthContext.Provider>
