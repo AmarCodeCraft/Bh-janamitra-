@@ -13,105 +13,98 @@ const useFoodImages = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Upload a new food image
+  const handleError = (err) => {
+    const message = err?.message || 'An unknown error occurred';
+    setError(message);
+    return message;
+  };
+
   const handleUploadImage = async (file, userId, caption, tags) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const result = await uploadFoodImage(file, userId, caption, tags);
-      return result;
+      return await uploadFoodImage(file, userId, caption, tags);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Get all food images
   const handleGetAllImages = async (limit) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const images = await getAllFoodImages(limit);
-      return images;
+      return await getAllFoodImages(limit);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Get food images by user ID
   const handleGetUserImages = async (userId, limit) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const images = await getUserFoodImages(userId, limit);
-      return images;
+      return await getUserFoodImages(userId, limit);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Get a single food image by ID
   const handleGetImageById = async (id) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const image = await getFoodImageById(id);
-      return image;
+      return await getFoodImageById(id);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete a food image
-  const handleDeleteImage = async (id, imageId) => {
+  const handleDeleteImage = async (userId, imageId) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      await deleteFoodImage(id, imageId);
+      await deleteFoodImage(userId, imageId);
       return { success: true };
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Like a food image
-  const handleLikeImage = async (id, currentLikes) => {
+  const handleLikeImage = async (imageId, currentLikes) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const result = await likeFoodImage(id, currentLikes);
-      return result;
+      return await likeFoodImage(imageId, currentLikes);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Add a comment to a food image
-  const handleAddComment = async (id, userId, userName, comment, currentComments) => {
+  const handleAddComment = async (imageId, userId, userName, comment, currentComments) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const result = await addComment(id, userId, userName, comment, currentComments);
-      return result;
+      return await addComment(imageId, userId, userName, comment, currentComments);
     } catch (err) {
-      setError(err.message);
+      handleError(err);
       throw err;
     } finally {
       setLoading(false);
@@ -127,7 +120,7 @@ const useFoodImages = () => {
     getImageById: handleGetImageById,
     deleteImage: handleDeleteImage,
     likeImage: handleLikeImage,
-    addComment: handleAddComment
+    addComment: handleAddComment,
   };
 };
 

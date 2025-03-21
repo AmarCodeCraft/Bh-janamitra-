@@ -1,24 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-// eslint-disable-next-line
 import { motion } from "framer-motion";
 import { getAllFoodImages } from "../utils/foodImages";
 import { useAuth } from "../hooks/useAuth";
-import React from "react";
 
 const Home = () => {
   const [foodImages, setFoodImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useAuth();
 
-  // Use a ref to track if we've already loaded data
-  const dataFetchedRef = React.useRef(false);
-
   useEffect(() => {
-    // Only fetch data if we haven't already
-    if (dataFetchedRef.current) return;
-    dataFetchedRef.current = true; // Set to true immediately to prevent multiple calls
-
     const fetchImages = async () => {
       try {
         setLoading(true);
@@ -33,16 +24,13 @@ const Home = () => {
     };
 
     fetchImages();
-  }, []); // Empty dependency array
+  }, []);
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.1 },
     },
   };
 
@@ -51,10 +39,7 @@ const Home = () => {
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-      },
+      transition: { type: "spring", stiffness: 100 },
     },
   };
 
@@ -63,10 +48,7 @@ const Home = () => {
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut",
-      },
+      transition: { duration: 0.6, ease: "easeOut" },
     },
   };
 
@@ -96,7 +78,7 @@ const Home = () => {
           Discover, share, and celebrate the art of food with fellow enthusiasts
           around the world.
         </motion.p>
-        {!isAuthenticated && (
+        {!isAuthenticated ? (
           <motion.div
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -116,8 +98,7 @@ const Home = () => {
               Sign In
             </Link>
           </motion.div>
-        )}
-        {isAuthenticated && (
+        ) : (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -159,22 +140,22 @@ const Home = () => {
             {foodImages.length > 0 ? (
               foodImages.map((image) => (
                 <motion.div
-                  key={image.$id}
+                  key={image?.$id}
                   className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300"
                   variants={itemVariants}
                 >
                   <Link
-                    to={`/dish/${image.$id}`}
+                    to={`/dish/${image?.$id}`}
                     className="group block relative overflow-hidden"
                   >
                     <div className="relative h-48 sm:h-64 lg:h-80">
                       <img
-                        src={image.imageUrl}
-                        alt={image.caption || "Food dish"}
+                        src={image?.imageUrl}
+                        alt={image?.caption || "Food dish"}
                         className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
                           e.target.src =
-                            "/src/assets/images/placeholder-food.jpg";
+                            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
                           e.target.onerror = null;
                         }}
                       />
@@ -199,11 +180,11 @@ const Home = () => {
                   </Link>
                   <div className="p-4 sm:p-6 bg-white">
                     <h3 className="font-semibold text-base sm:text-lg mb-2 text-gray-800 line-clamp-1">
-                      {image.caption}
+                      {image?.caption || "Untitled Dish"}
                     </h3>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 text-xs sm:text-sm">
-                        {new Date(image.$createdAt).toLocaleDateString()}
+                        {new Date(image?.$createdAt).toLocaleDateString()}
                       </span>
                       <div className="flex items-center text-gray-600">
                         <svg
@@ -219,7 +200,7 @@ const Home = () => {
                           />
                         </svg>
                         <span className="font-medium text-sm sm:text-base">
-                          {image.likes || 0}
+                          {image?.likes || 0}
                         </span>
                       </div>
                     </div>

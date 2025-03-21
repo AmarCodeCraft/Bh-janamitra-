@@ -6,6 +6,10 @@ import { useAuth } from "../hooks/useAuth";
 import { getUserFoodImages, deleteFoodImage } from "../utils/foodImages";
 import React from "react";
 
+// Add a base64 encoded small placeholder image that will always work
+const fallbackImageBase64 =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+
 const Profile = () => {
   const [userImages, setUserImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -174,8 +178,7 @@ const Profile = () => {
                         alt={image.caption || "Food dish"}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         onError={(e) => {
-                          e.target.src =
-                            "/src/assets/images/placeholder-food.jpg";
+                          e.target.src = fallbackImageBase64;
                           e.target.onerror = null;
                         }}
                       />
